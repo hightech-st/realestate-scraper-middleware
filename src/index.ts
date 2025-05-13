@@ -20,7 +20,7 @@ await fastify.register(swagger, {
 });
 await fastify.register(swaggerUI, {
   routePrefix: '/docs',
-  staticCSP: true
+  staticCSP: false
 });
 
 const dynamoDb = new AWS.DynamoDB(config.dynamoDB);
