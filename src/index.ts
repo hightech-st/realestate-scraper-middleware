@@ -72,26 +72,30 @@ fastify.get('/item/:id', {
     params: {
       type: 'object',
       properties: {
-        id: { type: 'string' },
-        postedAt: { type: 'string', format: 'date-time' } // ISO timestamp
+        id: { type: 'string' }
       },
-      required: ['id', 'postedAt'],
+      required: ['id'],
       additionalProperties: true
     },
     tags: ['RealEstate']
   },
   handler: async (request, reply) => {
     const { id } = request.params as { id: string };
+    const currentTime = new Date().toISOString();
 
     const params = {
       TableName: 'realestate_table',
-      Key: { id }
+      KeyConditionExpression: 'id = :id AND postedAt <= :currentTime',
+      ExpressionAttributeValues: {
+        ':id': id,
+        ':currentTime': currentTime
+      }
     };
 
     try {
-      const result = await docClient.get(params).promise();
-      if (result.Item) {
-        reply.send(result.Item);
+      const result = await docClient.query(params).promise();
+      if (result.Items && result.Items.length > 0) {
+        reply.send(result.Items);
       } else {
         reply.code(404).send({ message: 'Item not found' });
       }
