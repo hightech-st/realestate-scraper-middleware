@@ -4,9 +4,9 @@ import Fastify from 'fastify';
 import AWS from 'aws-sdk';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
-import config from './config';
+import config from './config.js';
 
-import { ensureTableExists } from './bootstrap';
+import { ensureTableExists } from './bootstrap.js';
 
 const fastify = Fastify({ logger: true });
 

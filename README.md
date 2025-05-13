@@ -8,3 +8,6 @@ then access http://localhost:8001
   pm2 start dist/index.js --name realestate-api
   pm2 save
   pm2 startup
+
+- code change then restart pm2
+  pm2 restart realestate-api
