@@ -30,6 +30,22 @@ export class RealEstateService {
     });
   }
 
+  async createMultiplePosts(dataArray: Static<typeof CreatePostSchema>[]) {
+    try {
+      await prisma.realEstateItem.createMany({
+        data: dataArray.map((data) => ({
+          ...data,
+          postedAt: new Date(data.postedAt),
+          s3_image_links: data.s3_image_links || []
+        })),
+        skipDuplicates: true
+      });
+    } catch (error) {
+      console.error(`Error creating multiple posts: ${error}`);
+      throw error;
+    }
+  }
+
   async getPostById(id: string) {
     const currentTime = new Date();
     return await prisma.realEstateItem.findMany({

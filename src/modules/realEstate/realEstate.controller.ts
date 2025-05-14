@@ -84,19 +84,19 @@ export class RealEstateController {
     try {
       const data = await this.service.scrapeFacebookGroup(request.body);
 
-      const savePromises = data.map(async (item: any) => {
-        const groupId = item.facebookUrl.match(/\/groups\/(\d+)/)?.[1];
-        const postId = item.url.match(/\/permalink\/(\d+)/)?.[1];
+      const postsToCreate = data
+        .map((item: any) => {
+          const groupId = item.facebookUrl.match(/\/groups\/(\d+)/)?.[1];
+          const postId = item.url.match(/\/permalink\/(\d+)/)?.[1];
 
-        if (!postId) {
-          request.log.warn('Could not extract post ID from URL', {
-            url: item.url
-          });
-          return null;
-        }
+          if (!postId) {
+            request.log.warn('Could not extract post ID from URL', {
+              url: item.url
+            });
+            return null;
+          }
 
-        try {
-          return await this.service.createPost({
+          return {
             id: `${groupId || 'unknown'}_${postId}`,
             post_id: postId,
             group_id: groupId,
@@ -105,22 +105,16 @@ export class RealEstateController {
             rawData: item,
             processed_content: cleanUpText(item.text || ''),
             s3_image_links: []
-          });
-        } catch (error) {
-          request.log.error('Failed to save item', {
-            error,
-            itemId: `${groupId || 'unknown'}_${postId}`
-          });
-          return null;
-        }
-      });
+          };
+        })
+        .filter(
+          (item: any): item is Static<typeof CreatePostSchema> => item !== null
+        );
 
-      const results = await Promise.all(savePromises);
-      const successfulSaves = results.filter((result) => result !== null);
+      await this.service.createMultiplePosts(postsToCreate);
 
       reply.send({
-        message: 'Data scraped and saved successfully',
-        count: successfulSaves.length
+        message: 'Data scraped and saved successfully'
       });
     } catch (err) {
       request.log.error(err);

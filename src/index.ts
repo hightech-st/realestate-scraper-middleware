@@ -5,8 +5,13 @@ import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
 import { realEstateRoutes } from './modules/realEstate/index.js';
 import { runSeeders } from './seeders/index.js';
+import { serverTimeout } from 'fastify-server-timeout';
 
-const fastify = Fastify({ logger: true });
+const fastify = Fastify({ logger: true, connectionTimeout: 0 });
+
+fastify.register(serverTimeout, {
+  serverTimeout: 0 // 0 disables timeout completely
+});
 
 // Register Swagger
 await fastify.register(swagger, {
