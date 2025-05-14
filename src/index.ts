@@ -1,14 +1,13 @@
 import dotenv from 'dotenv';
 dotenv.config();
 import Fastify from 'fastify';
-import AWS from 'aws-sdk';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
-import config from './config.js';
-
-import { ensureTableExists } from './bootstrap.js';
+import { PrismaClient } from '@prisma/client';
+import { cleanUpText } from './utility/cleanUpText.js';
 
 const fastify = Fastify({ logger: true });
+const prisma = new PrismaClient();
 
 await fastify.register(swagger, {
   openapi: {
@@ -23,42 +22,55 @@ await fastify.register(swaggerUI, {
   staticCSP: false
 });
 
-const dynamoDb = new AWS.DynamoDB(config.dynamoDB);
-
-const docClient = new AWS.DynamoDB.DocumentClient({
-  ...config.dynamoDB,
-  convertEmptyValues: true
-});
-
 // ✅ Define routes
-fastify.post('/item', {
+fastify.post('/post/manualy-create-post', {
   schema: {
-    summary: 'Create an item',
+    summary: 'Create a post manually',
     body: {
       type: 'object',
-      required: ['id', 'postedAt'],
+      required: ['id', 'post_id', 'postedAt', 'rawData', 'source'],
       properties: {
         id: { type: 'string' },
-        postedAt: { type: 'string', format: 'date-time' } // ISO timestamp
-      },
-      additionalProperties: true
+        post_id: { type: 'string' },
+        group_id: { type: 'string' },
+        source: { type: 'string' },
+        postedAt: { type: 'string', format: 'date-time' },
+        rawData: { type: 'object' },
+        processed_content: { type: 'string' },
+        s3_image_links: {
+          type: 'array',
+          items: { type: 'string' }
+        }
+      }
     },
     tags: ['RealEstate']
   },
   handler: async (request, reply) => {
-    const body = request.body as object;
-
-    const params = {
-      TableName: 'realestate_table',
-      Item: {
-        ...body,
-        createdAt: new Date().toISOString()
-      }
+    const body = request.body as {
+      id: string;
+      post_id: string;
+      group_id?: string;
+      source: string;
+      postedAt: string;
+      rawData: object;
+      processed_content?: string;
+      s3_image_links?: string[];
     };
 
     try {
-      await docClient.put(params).promise();
-      reply.send({ message: 'Item inserted successfully', item: params.Item });
+      const item = await prisma.realEstateItem.create({
+        data: {
+          id: body.id,
+          post_id: body.post_id,
+          group_id: body.group_id,
+          source: body.source,
+          postedAt: new Date(body.postedAt),
+          rawData: body.rawData,
+          processed_content: body.processed_content,
+          s3_image_links: body.s3_image_links || []
+        }
+      });
+      reply.send({ message: 'Item inserted successfully', item });
     } catch (err) {
       fastify.log.error(err);
       reply.status(500).send({ error: 'Failed to insert item' });
@@ -66,9 +78,9 @@ fastify.post('/item', {
   }
 });
 
-fastify.get('/item/:id', {
+fastify.get('/post/:id', {
   schema: {
-    summary: 'Get item loosely',
+    summary: 'Get post by id',
     params: {
       type: 'object',
       properties: {
@@ -81,21 +93,20 @@ fastify.get('/item/:id', {
   },
   handler: async (request, reply) => {
     const { id } = request.params as { id: string };
-    const currentTime = new Date().toISOString();
-
-    const params = {
-      TableName: 'realestate_table',
-      KeyConditionExpression: 'id = :id AND postedAt <= :currentTime',
-      ExpressionAttributeValues: {
-        ':id': id,
-        ':currentTime': currentTime
-      }
-    };
+    const currentTime = new Date();
 
     try {
-      const result = await docClient.query(params).promise();
-      if (result.Items && result.Items.length > 0) {
-        reply.send(result.Items);
+      const items = await prisma.realEstateItem.findMany({
+        where: {
+          id: id,
+          postedAt: {
+            lte: currentTime
+          }
+        }
+      });
+
+      if (items.length > 0) {
+        reply.send(items);
       } else {
         reply.code(404).send({ message: 'Item not found' });
       }
@@ -103,6 +114,48 @@ fastify.get('/item/:id', {
       fastify.log.error(err);
       reply.status(500).send({ error: 'Failed to fetch item' });
     }
+  }
+});
+
+// endponst to get all posts
+fastify.get('/posts', {
+  schema: {
+    summary: 'Get all posts',
+    tags: ['RealEstate'],
+    query: {
+      type: 'object',
+      properties: {
+        postedAtFrom: { type: 'string', format: 'date-time' },
+        postedAtTo: { type: 'string', format: 'date-time' }
+      }
+    }
+  },
+  handler: async (request, reply) => {
+    const { postedAtFrom, postedAtTo } = request.query as {
+      postedAtFrom: string;
+      postedAtTo: string;
+    };
+    const posts = await prisma.realEstateItem.findMany({
+      orderBy: {
+        postedAt: 'desc'
+      },
+      where: {
+        postedAt: {
+          gte: postedAtFrom ? new Date(postedAtFrom) : undefined,
+          lte: postedAtTo ? new Date(postedAtTo) : undefined
+        }
+      },
+      select: {
+        id: true,
+        post_id: true,
+        group_id: true,
+        source: true,
+        postedAt: true,
+        processed_content: true
+      },
+      take: 500
+    });
+    reply.send(posts);
   }
 });
 
@@ -165,75 +218,37 @@ fastify.post('/scrape-facebook-group', {
 
       const data = await response.json();
 
-      console.log('data', data);
-
-      // Save each item to DynamoDB
+      // Save each item to PostgreSQL
       const savePromises = data.map(async (item: any) => {
-        // Extract group ID from facebookUrl
         const groupId = item.facebookUrl.match(/\/groups\/(\d+)/)?.[1];
-
-        // Extract post ID from url
         const postId = item.url.match(/\/permalink\/(\d+)/)?.[1];
 
-        if (!groupId || !postId) {
-          fastify.log.warn('Could not extract group ID or post ID from URLs', {
-            facebookUrl: item.facebookUrl,
+        if (!postId) {
+          fastify.log.warn('Could not extract post ID from URL', {
             url: item.url
           });
           return null;
         }
 
-        // Clean up the data structure
-        const cleanedItem = {
-          id: `${groupId}_${postId}`,
-          postedAt: item.time || new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-          source: 'facebook_group',
-          // Essential fields
-          text: item.text,
-          url: item.url,
-          facebookUrl: item.facebookUrl,
-          groupTitle: item.groupTitle,
-          facebookId: item.facebookId,
-          // User info
-          user: {
-            id: item.user?.id,
-            name: item.user?.name
-          },
-          // Counts
-          likesCount: item.likesCount || 0,
-          sharesCount: item.sharesCount || 0,
-          commentsCount: item.commentsCount || 0,
-          // Comments (limit to first 5 to reduce size)
-          topComments: (item.topComments || [])
-            .slice(0, 5)
-            .map((comment: any) => ({
-              id: comment.id,
-              text: comment.text,
-              time: comment.time,
-              user: {
-                id: comment.user?.id,
-                name: comment.user?.name
-              }
-            })),
-          // Attachments (limit to essential info)
-          attachments: (item.attachments || []).map((attachment: any) => ({
-            type: attachment.type,
-            url: attachment.url
-          }))
-        };
-
-        const params = {
-          TableName: 'realestate_table',
-          Item: cleanedItem
-        };
-
         try {
-          return await docClient.put(params).promise();
+          return await prisma.realEstateItem.create({
+            data: {
+              id: `${groupId || 'unknown'}_${postId}`,
+              post_id: postId,
+              group_id: groupId,
+              source: 'facebook',
+              postedAt: new Date(item.time || new Date()),
+              rawData: item,
+              processed_content: cleanUpText(item.text || ''),
+              s3_image_links: [],
+              is_content_processed: true,
+              is_image_processed: false
+            }
+          });
         } catch (error) {
           fastify.log.error('Failed to save item', {
             error,
-            itemId: cleanedItem.id
+            itemId: `${groupId || 'unknown'}_${postId}`
           });
           return null;
         }
@@ -253,12 +268,73 @@ fastify.post('/scrape-facebook-group', {
   }
 });
 
+// Add new endpoint to update processing status
+fastify.patch('/post/:id/processing-status', {
+  schema: {
+    summary: 'Update post processing status',
+    params: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' }
+      },
+      required: ['id']
+    },
+    body: {
+      type: 'object',
+      properties: {
+        is_content_processed: { type: 'boolean' },
+        is_image_processed: { type: 'boolean' },
+        processed_content: { type: 'string' },
+        s3_image_links: {
+          type: 'array',
+          items: { type: 'string' }
+        }
+      }
+    },
+    tags: ['RealEstate']
+  },
+  handler: async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as {
+      is_content_processed?: boolean;
+      is_image_processed?: boolean;
+      processed_content?: string;
+      s3_image_links?: string[];
+    };
+
+    try {
+      const updatedItem = await prisma.realEstateItem.update({
+        where: { id },
+        data: {
+          ...(body.is_content_processed !== undefined && {
+            is_content_processed: body.is_content_processed
+          }),
+          ...(body.is_image_processed !== undefined && {
+            is_image_processed: body.is_image_processed
+          }),
+          ...(body.processed_content !== undefined && {
+            processed_content: body.processed_content
+          }),
+          ...(body.s3_image_links !== undefined && {
+            s3_image_links: body.s3_image_links
+          })
+        }
+      });
+      reply.send({ message: 'Item updated successfully', item: updatedItem });
+    } catch (err) {
+      fastify.log.error(err);
+      reply.status(500).send({ error: 'Failed to update item' });
+    }
+  }
+});
+
 // ✅ Start server
 const start = async () => {
+  const port = parseInt(process.env.PORT || '3000', 10);
   try {
-    await ensureTableExists(dynamoDb, fastify);
-    await fastify.listen({ port: config.port, host: '0.0.0.0' });
-    console.log(`Server running at http://localhost:${config.port}`);
+    await prisma.$connect();
+    await fastify.listen({ port: port, host: '0.0.0.0' });
+    console.log(`Server running at http://localhost:${port}`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
