@@ -113,29 +113,55 @@ export class RealEstateService {
     }
 
     try {
-      const response = await axios.post(
-        'https://api.apify.com/v2/acts/apify~facebook-groups-scraper/run-sync-get-dataset-items',
-        data,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${APIFY_API_TOKEN}`
-          },
-          timeout: 600000 // 10 minutes in milliseconds
-        }
+      // Step 1: Start actor run
+      const startRun = await axios.post(
+        `https://api.apify.com/v2/acts/apify~facebook-groups-scraper/runs?token=${APIFY_API_TOKEN}`,
+        data
       );
 
-      return response.data;
-    } catch (error: any) {
-      if (error.response) {
-        throw new Error(
-          `Apify API responded with status: ${error.response.status}`
+      const runId = startRun.data.data.id;
+      console.log('Started run:', runId);
+
+      // Step 2: Poll for run completion
+      let runStatus = null;
+      let maxWait = 1200; // Max 20 minutes
+      let waited = 0;
+
+      while (waited < maxWait) {
+        await new Promise((r) => setTimeout(r, 5000)); // wait 5s
+        waited += 5;
+
+        const statusRes = await axios.get(
+          `https://api.apify.com/v2/actor-runs/${runId}?token=${APIFY_API_TOKEN}`
         );
-      } else if (error.code === 'ECONNABORTED') {
-        throw new Error('Apify API request timed out');
-      } else {
-        throw new Error(`Apify API request failed: ${error.message}`);
+
+        runStatus = statusRes.data.data.status;
+        console.log(`Status after ${waited}s:`, runStatus);
+
+        if (runStatus === 'SUCCEEDED') {
+          break;
+        }
+
+        if (['FAILED', 'ABORTED', 'TIMED-OUT'].includes(runStatus)) {
+          throw new Error(`Apify run failed: ${runStatus}`);
+        }
       }
+
+      if (runStatus !== 'SUCCEEDED') {
+        throw new Error('Apify run did not finish in time.');
+      }
+
+      // Step 3: Get dataset items
+      const datasetId = startRun.data.data.defaultDatasetId;
+      const datasetRes = await axios.get(
+        `https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_API_TOKEN}`
+      );
+
+      console.log('Scraped data:', datasetRes.data);
+      return datasetRes.data;
+    } catch (err) {
+      console.error('Error:', err);
+      throw err;
     }
   }
 }
