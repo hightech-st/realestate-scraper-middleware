@@ -1,18 +1,19 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { RealEstateService } from './realEstate.service.js';
-import {
-  CreatePostDto,
-  UpdateProcessingStatusDto,
-  ScrapeFacebookGroupDto,
-  PostQueryDto
-} from './realEstate.types.js';
 import { cleanUpText } from '../../utility/cleanUpText.js';
+import { Static } from '@sinclair/typebox';
+import {
+  CreatePostSchema,
+  UpdateProcessingStatusSchema,
+  ScrapeFacebookGroupSchema,
+  GetPostsQuerySchema
+} from './realEstate.schemas.js';
 
 export class RealEstateController {
   constructor(private readonly service: RealEstateService) {}
 
   async createPost(
-    request: FastifyRequest<{ Body: CreatePostDto }>,
+    request: FastifyRequest<{ Body: Static<typeof CreatePostSchema> }>,
     reply: FastifyReply
   ) {
     try {
@@ -43,7 +44,9 @@ export class RealEstateController {
   }
 
   async getAllPosts(
-    request: FastifyRequest<{ Querystring: PostQueryDto }>,
+    request: FastifyRequest<{
+      Querystring: Static<typeof GetPostsQuerySchema>;
+    }>,
     reply: FastifyReply
   ) {
     try {
@@ -58,7 +61,7 @@ export class RealEstateController {
   async updateProcessingStatus(
     request: FastifyRequest<{
       Params: { id: string };
-      Body: UpdateProcessingStatusDto;
+      Body: Static<typeof UpdateProcessingStatusSchema>;
     }>,
     reply: FastifyReply
   ) {
@@ -75,7 +78,7 @@ export class RealEstateController {
   }
 
   async scrapeFacebookGroup(
-    request: FastifyRequest<{ Body: ScrapeFacebookGroupDto }>,
+    request: FastifyRequest<{ Body: Static<typeof ScrapeFacebookGroupSchema> }>,
     reply: FastifyReply
   ) {
     try {

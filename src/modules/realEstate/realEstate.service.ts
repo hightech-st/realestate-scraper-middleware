@@ -1,15 +1,16 @@
 import { PrismaClient } from '@prisma/client';
-import {
-  CreatePostDto,
-  UpdateProcessingStatusDto,
-  ScrapeFacebookGroupDto,
-  PostQueryDto
-} from './realEstate.types.js';
 
+import {
+  CreatePostSchema,
+  UpdateProcessingStatusSchema,
+  ScrapeFacebookGroupSchema,
+  GetPostsQuerySchema
+} from './realEstate.schemas.js';
+import { Static } from '@sinclair/typebox';
 const prisma = new PrismaClient();
 
 export class RealEstateService {
-  async createPost(data: CreatePostDto) {
+  async createPost(data: Static<typeof CreatePostSchema>) {
     //only create post if it doesn't exist
     const existingPost = await prisma.realEstateItem.findUnique({
       where: { id: data.id }
@@ -41,7 +42,7 @@ export class RealEstateService {
     });
   }
 
-  async getAllPosts(query: PostQueryDto) {
+  async getAllPosts(query: Static<typeof GetPostsQuerySchema>) {
     return await prisma.realEstateItem.findMany({
       orderBy: {
         postedAt: 'desc'
@@ -64,7 +65,10 @@ export class RealEstateService {
     });
   }
 
-  async updateProcessingStatus(id: string, data: UpdateProcessingStatusDto) {
+  async updateProcessingStatus(
+    id: string,
+    data: Static<typeof UpdateProcessingStatusSchema>
+  ) {
     return await prisma.realEstateItem.update({
       where: { id },
       data: {
@@ -84,7 +88,7 @@ export class RealEstateService {
     });
   }
 
-  async scrapeFacebookGroup(data: ScrapeFacebookGroupDto) {
+  async scrapeFacebookGroup(data: Static<typeof ScrapeFacebookGroupSchema>) {
     const APIFY_API_TOKEN = process.env.APIFY_API_TOKEN;
     if (!APIFY_API_TOKEN) {
       throw new Error('APIFY_API_TOKEN not configured');
