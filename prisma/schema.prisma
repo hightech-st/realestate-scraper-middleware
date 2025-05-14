@@ -8,20 +8,29 @@ datasource db {
 }
 
 model RealEstateItem {
-  id        String   @id
-  post_id   String
-  group_id  String?
-  source    String
-  postedAt  DateTime
-  createdAt DateTime @default(now())
-  rawData   Json
-  processed_content String?
-  is_content_processed Boolean @default(false)
-  is_image_processed Boolean @default(false)
-  s3_image_links    String[]
+  id                   String   @id
+  post_id              String
+  group_id             String?
+  source               String
+  postedAt             DateTime
+  createdAt            DateTime @default(now())
+  rawData              Json
+  processed_content    String?
+  is_content_processed Boolean  @default(false)
+  is_image_processed   Boolean  @default(false)
+  s3_image_links       String[]
 
   @@index([post_id])
   @@index([group_id])
   @@index([is_content_processed])
   @@index([is_image_processed])
-} 
+}
+
+model FacebookGroups {
+  id             String  @id
+  group_id       String
+  group_link     String
+  group_name     String
+  group_location String
+  for_foreigner  Boolean @default(false)
+}

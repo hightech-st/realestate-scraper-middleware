@@ -1,3 +1,5 @@
+- npx prisma format
+  To format schema.prisma, align fields and types neatly
 - prisma migrate dev --name add_new_field
   Creates new migration files
   Applies migrations to your development database

@@ -4,6 +4,7 @@ import Fastify from 'fastify';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
 import { realEstateRoutes } from './modules/realEstate/index.js';
+import { runSeeders } from './seeders/index.js';
 
 const fastify = Fastify({ logger: true });
 
@@ -25,16 +26,18 @@ await fastify.register(swaggerUI, {
 // Register routes
 await fastify.register(realEstateRoutes);
 
-// Start server
-const start = async () => {
-  const port = parseInt(process.env.PORT || '3000', 10);
+async function start() {
   try {
+    // Run seeders before starting the server
+    await runSeeders();
+
+    const port = parseInt(process.env.PORT || '3000', 10);
     await fastify.listen({ port: port, host: '0.0.0.0' });
     console.log(`Server running at http://localhost:${port}`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
   }
-};
+}
 
 start();
