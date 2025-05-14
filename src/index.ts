@@ -6,7 +6,7 @@ import swaggerUI from '@fastify/swagger-ui';
 import { realEstateRoutes } from './modules/realEstate/index.js';
 import { runSeeders } from './seeders/index.js';
 
-const fastify = Fastify({ logger: true, connectionTimeout: 0 });
+const fastify = Fastify({ logger: true });
 
 // Register Swagger
 await fastify.register(swagger, {

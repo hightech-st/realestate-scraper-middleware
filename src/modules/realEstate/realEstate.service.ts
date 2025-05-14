@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import axios from 'axios';
 
 import {
   CreatePostSchema,
@@ -38,6 +39,7 @@ export class RealEstateService {
           postedAt: new Date(data.postedAt),
           s3_image_links: data.s3_image_links || []
         })),
+        //skip post with duplicate id
         skipDuplicates: true
       });
     } catch (error) {
@@ -110,22 +112,30 @@ export class RealEstateService {
       throw new Error('APIFY_API_TOKEN not configured');
     }
 
-    const response = await fetch(
-      'https://api.apify.com/v2/acts/apify~facebook-groups-scraper/run-sync-get-dataset-items',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${APIFY_API_TOKEN}`
-        },
-        body: JSON.stringify(data)
+    try {
+      const response = await axios.post(
+        'https://api.apify.com/v2/acts/apify~facebook-groups-scraper/run-sync-get-dataset-items',
+        data,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${APIFY_API_TOKEN}`
+          },
+          timeout: 600000 // 10 minutes in milliseconds
+        }
+      );
+
+      return response.data;
+    } catch (error: any) {
+      if (error.response) {
+        throw new Error(
+          `Apify API responded with status: ${error.response.status}`
+        );
+      } else if (error.code === 'ECONNABORTED') {
+        throw new Error('Apify API request timed out');
+      } else {
+        throw new Error(`Apify API request failed: ${error.message}`);
       }
-    );
-
-    if (!response.ok) {
-      throw new Error(`Apify API responded with status: ${response.status}`);
     }
-
-    return await response.json();
   }
 }
