@@ -121,4 +121,26 @@ export class RealEstateController {
       reply.status(500).send({ error: 'Failed to scrape and save data' });
     }
   }
+
+  async getAllPostsToFile(
+    request: FastifyRequest<{
+      Querystring: Static<typeof GetPostsQuerySchema>;
+    }>,
+    reply: FastifyReply
+  ) {
+    try {
+      const result = await this.service.getAllPostsToFile(request.query);
+
+      reply
+        .header('Content-Type', 'text/plain')
+        .header(
+          'Content-Disposition',
+          `attachment; filename="${result.filename}"`
+        )
+        .send(result.content);
+    } catch (err) {
+      request.log.error(err);
+      reply.status(500).send({ error: 'Failed to generate posts file' });
+    }
+  }
 }

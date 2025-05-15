@@ -73,4 +73,16 @@ export async function realEstateRoutes(fastify: FastifyInstance) {
     },
     controller.updateProcessingStatus.bind(controller)
   );
+
+  fastify.get(
+    '/posts/download',
+    {
+      schema: {
+        summary: 'Download all posts as text file',
+        querystring: GetPostsQuerySchema,
+        tags: ['RealEstate']
+      }
+    },
+    controller.getAllPostsToFile.bind(controller)
+  );
 }

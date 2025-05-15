@@ -83,6 +83,38 @@ export class RealEstateService {
     });
   }
 
+  async getAllPostsToFile(query: Static<typeof GetPostsQuerySchema>) {
+    const posts = await prisma.realEstateItem.findMany({
+      orderBy: {
+        postedAt: 'desc'
+      },
+      where: {
+        postedAt: {
+          gte: query.postedAtFrom ? new Date(query.postedAtFrom) : undefined,
+          lte: query.postedAtTo ? new Date(query.postedAtTo) : undefined
+        }
+      },
+      select: {
+        processed_content: true
+      },
+      take: 500
+    });
+
+    // Filter out any posts with null/undefined processed_content
+    const validContents = posts
+      .map((post) => post.processed_content)
+      .filter((content) => content !== null && content !== undefined);
+
+    // Join all contents with newlines
+    const fileContent = validContents.join('\n');
+
+    return {
+      content: fileContent,
+      filename: `posts_${new Date().toISOString()}.txt`,
+      totalPosts: validContents.length
+    };
+  }
+
   async updateProcessingStatus(
     id: string,
     data: Static<typeof UpdateProcessingStatusSchema>
