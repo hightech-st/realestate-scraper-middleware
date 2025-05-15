@@ -8,6 +8,7 @@ import {
   GetPostsQuerySchema
 } from './realEstate.schemas.js';
 import { Static } from '@sinclair/typebox';
+import { cleanUpText } from '../../utility/cleanUpText.js';
 const prisma = new PrismaClient();
 
 export class RealEstateService {
@@ -79,7 +80,7 @@ export class RealEstateService {
         postedAt: true,
         processed_content: true
       },
-      take: 500
+      take: 1000
     });
   }
 
@@ -97,7 +98,7 @@ export class RealEstateService {
       select: {
         processed_content: true
       },
-      take: 500
+      take: 1000
     });
 
     // Filter out any posts with null/undefined processed_content
@@ -195,5 +196,46 @@ export class RealEstateService {
       console.error('Error:', err);
       throw err;
     }
+  }
+
+  async updateAllProcessedContent() {
+    // Get all records that need processing
+    const posts = await prisma.realEstateItem.findMany({
+      select: {
+        id: true,
+        rawData: true
+      }
+    });
+
+    let updatedCount = 0;
+    let errorCount = 0;
+
+    // Process each post
+    for (const post of posts) {
+      try {
+        const processedContent = cleanUpText(
+          (post.rawData as { text?: string })?.text || ''
+        );
+
+        await prisma.realEstateItem.update({
+          where: { id: post.id },
+          data: {
+            processed_content: processedContent,
+            is_content_processed: true
+          }
+        });
+
+        updatedCount++;
+      } catch (error) {
+        console.error(`Error processing post ${post.id}:`, error);
+        errorCount++;
+      }
+    }
+
+    return {
+      totalProcessed: posts.length,
+      updatedCount,
+      errorCount
+    };
   }
 }

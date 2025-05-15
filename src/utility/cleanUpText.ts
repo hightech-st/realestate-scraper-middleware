@@ -8,8 +8,8 @@ export const cleanUpText = (text: string): string => {
     .replace(/\t/g, ' ') // Replace tabs with space
     .replace(/-----/g, ' '); // Remove separator lines
 
-  // Step 2: Keep only letters, numbers, and spaces, remove everything else
-  processed = processed.replace(/[^\p{L}\d\s]/gu, ' ');
+  // Step 2: Keep only letters, numbers, and spaces, comma, dot, colon, semicolon, dash, slash, and question mark remove everything else
+  processed = processed.replace(/[^\p{L}\d\s,.:;-?/]/gu, ' ');
 
   // Step 3: Clean up multiple spaces
   processed = processed.replace(/\s+/g, ' ').trim();

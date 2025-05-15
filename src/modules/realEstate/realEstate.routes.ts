@@ -85,4 +85,15 @@ export async function realEstateRoutes(fastify: FastifyInstance) {
     },
     controller.getAllPostsToFile.bind(controller)
   );
+
+  fastify.post(
+    '/posts/update-processed-content',
+    {
+      schema: {
+        summary: 'Update processed content for all posts',
+        tags: ['RealEstate']
+      }
+    },
+    controller.updateAllProcessedContent.bind(controller)
+  );
 }

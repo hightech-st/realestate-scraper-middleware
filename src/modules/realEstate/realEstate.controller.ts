@@ -143,4 +143,20 @@ export class RealEstateController {
       reply.status(500).send({ error: 'Failed to generate posts file' });
     }
   }
+
+  async updateAllProcessedContent(
+    request: FastifyRequest,
+    reply: FastifyReply
+  ) {
+    try {
+      const result = await this.service.updateAllProcessedContent();
+      reply.send({
+        message: 'Successfully updated processed content',
+        ...result
+      });
+    } catch (err) {
+      request.log.error(err);
+      reply.status(500).send({ error: 'Failed to update processed content' });
+    }
+  }
 }
