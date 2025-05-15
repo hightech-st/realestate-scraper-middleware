@@ -35,10 +35,3 @@ export const ScrapeFacebookGroupSchema = Type.Object({
     })
   )
 });
-
-export const UpdateProcessingStatusSchema = Type.Object({
-  is_content_processed: Type.Optional(Type.Boolean()),
-  is_image_processed: Type.Optional(Type.Boolean()),
-  processed_content: Type.Optional(Type.String()),
-  s3_image_links: Type.Optional(Type.Array(Type.String()))
-});

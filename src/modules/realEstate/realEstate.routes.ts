@@ -5,8 +5,7 @@ import {
   CreatePostSchema,
   GetPostParamsSchema,
   GetPostsQuerySchema,
-  ScrapeFacebookGroupSchema,
-  UpdateProcessingStatusSchema
+  ScrapeFacebookGroupSchema
 } from './realEstate.schemas.js';
 
 export async function realEstateRoutes(fastify: FastifyInstance) {

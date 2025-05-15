@@ -4,7 +4,6 @@ import { cleanUpText } from '../../utility/cleanUpText.js';
 import { Static } from '@sinclair/typebox';
 import {
   CreatePostSchema,
-  UpdateProcessingStatusSchema,
   ScrapeFacebookGroupSchema,
   GetPostsQuerySchema
 } from './realEstate.schemas.js';
