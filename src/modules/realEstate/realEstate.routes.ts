@@ -1,6 +1,12 @@
 import { FastifyInstance } from 'fastify';
-import { RealEstateController } from './realEstate.controller.js';
-import { RealEstateService } from './realEstate.service.js';
+import {
+  createPostController,
+  getPostByIdController,
+  getAllPostsController,
+  scrapeFacebookGroupController,
+  getAllPostsToFileController,
+  updateAllProcessedContentController
+} from './realEstate.controller.js';
 import {
   CreatePostSchema,
   GetPostParamsSchema,
@@ -9,9 +15,6 @@ import {
 } from './realEstate.schemas.js';
 
 export async function realEstateRoutes(fastify: FastifyInstance) {
-  const service = new RealEstateService();
-  const controller = new RealEstateController(service);
-
   fastify.post(
     '/post/manualy-create-post',
     {
@@ -21,7 +24,7 @@ export async function realEstateRoutes(fastify: FastifyInstance) {
         tags: ['RealEstate']
       }
     },
-    controller.createPost.bind(controller)
+    createPostController
   );
 
   fastify.get(
@@ -33,7 +36,7 @@ export async function realEstateRoutes(fastify: FastifyInstance) {
         tags: ['RealEstate']
       }
     },
-    controller.getPostById.bind(controller)
+    getPostByIdController
   );
 
   fastify.get(
@@ -45,7 +48,7 @@ export async function realEstateRoutes(fastify: FastifyInstance) {
         tags: ['RealEstate']
       }
     },
-    controller.getAllPosts.bind(controller)
+    getAllPostsController
   );
 
   fastify.post(
@@ -57,7 +60,7 @@ export async function realEstateRoutes(fastify: FastifyInstance) {
         tags: ['RealEstate']
       }
     },
-    controller.scrapeFacebookGroup.bind(controller)
+    scrapeFacebookGroupController
   );
 
   fastify.get(
@@ -69,7 +72,7 @@ export async function realEstateRoutes(fastify: FastifyInstance) {
         tags: ['RealEstate']
       }
     },
-    controller.getAllPostsToFile.bind(controller)
+    getAllPostsToFileController
   );
 
   fastify.post(
@@ -80,6 +83,6 @@ export async function realEstateRoutes(fastify: FastifyInstance) {
         tags: ['RealEstate']
       }
     },
-    controller.updateAllProcessedContent.bind(controller)
+    updateAllProcessedContentController
   );
 }
