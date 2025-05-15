@@ -61,19 +61,6 @@ export async function realEstateRoutes(fastify: FastifyInstance) {
     controller.scrapeFacebookGroup.bind(controller)
   );
 
-  fastify.patch(
-    '/post/:id/processing-status',
-    {
-      schema: {
-        summary: 'Update post processing status',
-        params: GetPostParamsSchema,
-        body: UpdateProcessingStatusSchema,
-        tags: ['RealEstate']
-      }
-    },
-    controller.updateProcessingStatus.bind(controller)
-  );
-
   fastify.get(
     '/posts/download',
     {

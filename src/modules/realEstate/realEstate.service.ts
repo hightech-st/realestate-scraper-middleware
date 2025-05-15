@@ -116,29 +116,6 @@ export class RealEstateService {
     };
   }
 
-  async updateProcessingStatus(
-    id: string,
-    data: Static<typeof UpdateProcessingStatusSchema>
-  ) {
-    return await prisma.realEstateItem.update({
-      where: { id },
-      data: {
-        ...(data.is_content_processed !== undefined && {
-          is_content_processed: data.is_content_processed
-        }),
-        ...(data.is_image_processed !== undefined && {
-          is_image_processed: data.is_image_processed
-        }),
-        ...(data.processed_content !== undefined && {
-          processed_content: data.processed_content
-        }),
-        ...(data.s3_image_links !== undefined && {
-          s3_image_links: data.s3_image_links
-        })
-      }
-    });
-  }
-
   async scrapeFacebookGroup(data: Static<typeof ScrapeFacebookGroupSchema>) {
     const APIFY_API_TOKEN = process.env.APIFY_API_TOKEN;
     if (!APIFY_API_TOKEN) {

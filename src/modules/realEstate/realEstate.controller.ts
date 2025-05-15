@@ -58,25 +58,6 @@ export class RealEstateController {
     }
   }
 
-  async updateProcessingStatus(
-    request: FastifyRequest<{
-      Params: { id: string };
-      Body: Static<typeof UpdateProcessingStatusSchema>;
-    }>,
-    reply: FastifyReply
-  ) {
-    try {
-      const updatedItem = await this.service.updateProcessingStatus(
-        request.params.id,
-        request.body
-      );
-      reply.send({ message: 'Item updated successfully', item: updatedItem });
-    } catch (err) {
-      request.log.error(err);
-      reply.status(500).send({ error: 'Failed to update item' });
-    }
-  }
-
   async scrapeFacebookGroup(
     request: FastifyRequest<{ Body: Static<typeof ScrapeFacebookGroupSchema> }>,
     reply: FastifyReply
